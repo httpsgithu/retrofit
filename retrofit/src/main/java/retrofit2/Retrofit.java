@@ -163,7 +163,7 @@ public final class Retrofit {
                 Platform platform = Platform.get();
                 return platform.isDefaultMethod(method)
                     ? platform.invokeDefaultMethod(method, service, proxy, args)
-                    : loadServiceMethod(method).invoke(args);
+                    : loadServiceMethod(service, method).invoke(args);
               }
             });
   }
@@ -191,18 +191,20 @@ public final class Retrofit {
     if (validateEagerly) {
       Platform platform = Platform.get();
       for (Method method : service.getDeclaredMethods()) {
-        if (!platform.isDefaultMethod(method) && !Modifier.isStatic(method.getModifiers())) {
-          loadServiceMethod(method);
+        if (!platform.isDefaultMethod(method)
+            && !Modifier.isStatic(method.getModifiers())
+            && !method.isSynthetic()) {
+          loadServiceMethod(service, method);
         }
       }
     }
   }
 
-  ServiceMethod<?> loadServiceMethod(Method method) {
+  ServiceMethod<?> loadServiceMethod(Class<?> service, Method method) {
     ServiceMethod<?> result = serviceMethodCache.get(method);
     if (result != null) return result;
 
-    synchronized (serviceMethodCache) {
+    synchronized (service) {
       result = serviceMethodCache.get(method);
       if (result == null) {
         result = ServiceMethod.parseAnnotations(this, method);
@@ -446,9 +448,7 @@ public final class Retrofit {
 
       // Do not add the default BuiltIntConverters and platform-aware converters added by build().
       for (int i = 1,
-              size =
-                  retrofit.converterFactories.size()
-                      - Platform.get().createDefaultConverterFactories().size();
+              size = retrofit.converterFactories.size() - retrofit.defaultConverterFactoriesSize;
           i < size;
           i++) {
         converterFactories.add(retrofit.converterFactories.get(i));

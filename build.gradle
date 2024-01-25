@@ -4,37 +4,36 @@ import org.gradle.internal.jvm.Jvm
 buildscript {
   dependencies {
     classpath libs.androidPlugin
-    classpath libs.robovmPlugin
+    classpath libs.kotlin.gradlePlugin
+    classpath libs.kotlin.serializationPlugin
+    classpath libs.dokkaPlugin
+    classpath libs.gradleMavenPublishPlugin
+    classpath libs.spotlessPlugin
+    classpath libs.errorpronePlugin
+    classpath libs.animalSnifferPlugin
+    classpath libs.protobufPlugin
   }
   repositories {
     mavenCentral()
     google()
-    jcenter()
     gradlePluginPortal()
   }
-}
-
-plugins {
-  alias(libs.plugins.kotlin.jvm) apply false
-  alias(libs.plugins.dokka) apply false
-  alias(libs.plugins.errorprone) apply false
-  alias(libs.plugins.mavenPublish) apply false
-  alias(libs.plugins.protobuf) apply false
-  alias(libs.plugins.animalsniffer) apply false
-  alias(libs.plugins.googleJavaFormat) apply false
 }
 
 subprojects {
   repositories {
     mavenCentral()
     google()
-    jcenter()
   }
 
   tasks.withType(JavaCompile).configureEach { task ->
     task.options.encoding = 'UTF-8'
-    task.sourceCompatibility = JavaVersion.VERSION_1_8
-    task.targetCompatibility = JavaVersion.VERSION_1_8
+  }
+
+  plugins.withType(JavaBasePlugin).configureEach {
+    java.toolchain {
+      languageVersion.set(JavaLanguageVersion.of(8))
+    }
   }
 
   tasks.withType(Test).configureEach {
@@ -84,42 +83,18 @@ subprojects {
       }
     }
 
-    // google-java-format only works on JDK 11 to JDK 15 (without wild flags).
-    if (Jvm.current().javaVersion.isJava11Compatible() && !Jvm.current().javaVersion.isCompatibleWith(JavaVersion.VERSION_16)) {
-      project.apply plugin: 'com.github.sherter.google-java-format'
-      googleJavaFormat {
-        toolVersion = '1.10.0'
-
-        // By default, the GJF plugin includes all Java folders inside the project directory. This
-        // does not work well with nested projects, especially when you want to exclude them.
-        source = sourceSets*.allJava
+    plugins.apply('com.diffplug.spotless')
+    spotless {
+      java {
+        googleJavaFormat(libs.googleJavaFormat.get().version)
+          .formatJavadoc(false)
+        removeUnusedImports()
+        target 'src/*/java/**/*.java'
       }
-      afterEvaluate {
-        def verify = tasks.getByName('verifyGoogleJavaFormat')
-        tasks.getByName('check').dependsOn(verify)
-        def prompt = tasks.create('promptGoogleJavaFormat') {
-          doLast {
-            println()
-            println('To automatically format, run "./gradlew googleJavaFormat"')
-            println()
-          }
-          onlyIf { verify.state.failure != null }
-        }
-        verify.finalizedBy(prompt)
+      kotlin {
+        ktlint(libs.ktlint.get().version)
+        target 'src/**/*.kt'
       }
-    }
-  }
-
-  plugins.withType(com.android.build.gradle.BasePlugin).configureEach { plugin ->
-    plugin.extension.compileOptions {
-      sourceCompatibility = JavaVersion.VERSION_1_8
-      targetCompatibility = JavaVersion.VERSION_1_8
-    }
-  }
-
-  tasks.withType(org.jetbrains.kotlin.gradle.dsl.KotlinJvmCompile).configureEach { task ->
-    task.kotlinOptions {
-      jvmTarget = '1.8'
     }
   }
 }

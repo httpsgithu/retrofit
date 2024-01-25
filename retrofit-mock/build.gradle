@@ -3,13 +3,13 @@ apply plugin: 'org.jetbrains.kotlin.jvm'
 apply plugin: 'com.vanniktech.maven.publish'
 
 dependencies {
-  api project(':retrofit')
-  compileOnly libs.kotlinStdLib
+  api projects.retrofit
+  compileOnly libs.kotlin.stdLib
   compileOnly libs.findBugsAnnotations
 
   testImplementation libs.junit
   testImplementation libs.assertj
-  testImplementation libs.kotlinStdLib
+  testImplementation libs.kotlin.stdLib
   testImplementation libs.kotlinCoroutines
 }
 

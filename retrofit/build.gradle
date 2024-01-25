@@ -6,23 +6,42 @@ dependencies {
   api libs.okhttp
 
   compileOnly libs.android
-  compileOnly libs.kotlinStdLib
+  compileOnly libs.kotlin.stdLib
   compileOnly libs.kotlinCoroutines
 
   compileOnly libs.animalSnifferAnnotations
   compileOnly libs.findBugsAnnotations
 
-  testImplementation project(':retrofit:test-helpers')
+  testImplementation projects.retrofit.testHelpers
   testImplementation libs.junit
   testImplementation libs.assertj
   testImplementation libs.guava
   testImplementation libs.mockwebserver
-  testImplementation libs.kotlinStdLib
-  testImplementation libs.kotlinCoroutines
 }
 
 jar {
   manifest {
     attributes  'Automatic-Module-Name': 'retrofit2'
+  }
+}
+
+// Create a test task for each supported JDK.
+(8..21).each { majorVersion ->
+  def jdkTest = tasks.register("testJdk$majorVersion", Test) {
+    javaLauncher = javaToolchains.launcherFor {
+      languageVersion = JavaLanguageVersion.of(majorVersion)
+      vendor = JvmVendorSpec.AZUL
+    }
+
+    description = "Runs the test suite on JDK $majorVersion"
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+
+    // Copy inputs from normal Test task.
+    def testTask = tasks.getByName("test")
+    classpath = testTask.classpath
+    testClassesDirs = testTask.testClassesDirs
+  }
+  tasks.named("check").configure {
+    dependsOn(jdkTest)
   }
 }
